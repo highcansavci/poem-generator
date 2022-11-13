@@ -1,7 +1,7 @@
 import time
 
 import numpy as np
-
+import math
 from config import GENERATED_LINE_COUNT, GENERATED_POEM_PATH, END_WORD
 from tokenizer.tokenizer import Tokenizer
 
@@ -32,6 +32,7 @@ class GenerativeModel:
                 cumulative += pb
                 if prob < cumulative and self.first_order_markov_model.get(word):
                     found_word = word
+                    break
         return found_word
 
     def generate_second_word(self, first_word):
@@ -41,8 +42,12 @@ class GenerativeModel:
             cumulative = 0
             for word, pb in self.first_order_markov_model[first_word].items():
                 cumulative += pb
-                if prob < cumulative and self.second_order_markov_model[first_word].get(word):
+                if prob < cumulative and self.second_order_markov_model.get(first_word) and self.second_order_markov_model[first_word].get(word):
                     found_word = word
+                    break
+                if math.isclose(cumulative, 1.0) and found_word == "":
+                    found_word = END_WORD
+                    break
         return found_word
 
     def generate_remaining_words_until_end(self, first_word, second_word, f):
@@ -61,19 +66,24 @@ class GenerativeModel:
                 if word == END_WORD:
                     is_ended = True
                     f.write("\n")
+                    break
 
     def generate_lines(self):
         np.random.seed(int(time.time()))
         with open(GENERATED_POEM_PATH, 'w') as f:
-            for i in range(GENERATED_LINE_COUNT):
+            i = 0
+            while i < GENERATED_LINE_COUNT:
                 word = self.generate_init_word()
                 print(f"{i + 1}. sentence first word is generated")
                 f.write(word + " ")
                 second_word = self.generate_second_word(word)
+                if second_word == END_WORD:
+                    continue
                 print(f"{i + 1}. sentence second word is generated")
                 f.write(second_word + " ")
                 self.generate_remaining_words_until_end(word, second_word, f)
                 print(f"{i + 1}. sentence remaining words are generated")
+                i += 1
 
     def encode_line(self, data):
         # build vector, first_markov and second_markov models
@@ -82,21 +92,21 @@ class GenerativeModel:
             if len(split_string) == 0:
                 continue
             split_string.append(END_WORD)
-            for i in range(len(split_string) - 1):
+            for i in range(len(split_string)):
                 word = split_string[i]
                 if i == 0:
                     self.vector_model[word] = self.vector_model.get(word, 0) + 1
-                elif i == 1 or i == len(split_string) - 2:
-                    self.first_order_markov_model[word] = self.first_order_markov_model.get(word, {})
-                    next_word = split_string[i + 1]
-                    self.first_order_markov_model[word][next_word] = self.first_order_markov_model[word].get(next_word, 0) + 1
+                elif i == 1 or i == len(split_string) - 1:
+                    prev_word = split_string[i - 1]
+                    self.first_order_markov_model[prev_word] = self.first_order_markov_model.get(prev_word, {})
+                    self.first_order_markov_model[prev_word][word] = self.first_order_markov_model[prev_word].get(word, 0) + 1
                 else:
-                    self.second_order_markov_model[word] = self.second_order_markov_model.get(word, {})
+                    prev_word = split_string[i - 1]
+                    self.second_order_markov_model[prev_word] = self.second_order_markov_model.get(prev_word, {})
+                    self.second_order_markov_model[prev_word][word] = self.second_order_markov_model[prev_word].get(word, {})
                     next_word = split_string[i + 1]
-                    self.second_order_markov_model[word][next_word] = self.second_order_markov_model[word].get(next_word, {})
-                    preceding_word = split_string[i + 2]
-                    self.second_order_markov_model[word][next_word][preceding_word] \
-                        = self.second_order_markov_model[word][next_word].get(preceding_word, 0) + 1
+                    self.second_order_markov_model[prev_word][word][next_word] \
+                        = self.second_order_markov_model[prev_word][word].get(next_word, 0) + 1
 
         # normalization of vector_model
         total_vector_model_size = 0
