@@ -1,3 +1,5 @@
+import time
+
 import numpy as np
 
 from config import GENERATED_LINE_COUNT, GENERATED_POEM_PATH, END_WORD
@@ -61,6 +63,7 @@ class GenerativeModel:
                     f.write("\n")
 
     def generate_lines(self):
+        np.random.seed(int(time.time()))
         with open(GENERATED_POEM_PATH, 'w') as f:
             for i in range(GENERATED_LINE_COUNT):
                 word = self.generate_init_word()
