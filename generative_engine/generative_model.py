@@ -101,12 +101,13 @@ class GenerativeModel:
                     self.first_order_markov_model[prev_word] = self.first_order_markov_model.get(prev_word, {})
                     self.first_order_markov_model[prev_word][word] = self.first_order_markov_model[prev_word].get(word, 0) + 1
                 else:
+                    prev2_word = split_string[i - 2]
                     prev_word = split_string[i - 1]
-                    self.second_order_markov_model[prev_word] = self.second_order_markov_model.get(prev_word, {})
-                    self.second_order_markov_model[prev_word][word] = self.second_order_markov_model[prev_word].get(word, {})
-                    next_word = split_string[i + 1]
-                    self.second_order_markov_model[prev_word][word][next_word] \
-                        = self.second_order_markov_model[prev_word][word].get(next_word, 0) + 1
+                    self.second_order_markov_model[prev2_word] = self.second_order_markov_model.get(prev2_word, {})
+                    self.second_order_markov_model[prev2_word][prev_word] = self.second_order_markov_model[prev2_word].get(
+                        word, {})
+                    self.second_order_markov_model[prev2_word][prev_word][word] \
+                        = self.second_order_markov_model[prev2_word][prev_word].get(word, 0) + 1
 
         # normalization of vector_model
         total_vector_model_size = 0
